@@ -1,9 +1,11 @@
 const request = require('request');
 const cheerio = require('cheerio');
+const _ = require('lodash');
 
 const BASE_URL = 'https://ru.wikipedia.org/wiki/';
 
 function loadAndParsePage(name, cb) {
+  counter++;
   let url = `${BASE_URL}${encodeURIComponent(name)}`;
   let pageTitle;
   let result = [];
@@ -23,17 +25,29 @@ function loadAndParsePage(name, cb) {
   })
 }
 
-loadAndParsePage('JavaScript', res => {
-  console.log(res);
-/*
-  res.links.forEach(link => {
-    console.log(`"${res.pageTitle}" -> "${link}"`);
-    loadAndParsePage(link, res => {
-      // console.log(`> ${link}`);
-      res.links.forEach(link => {
-        console.log(`"${res.pageTitle}" -> "${link}"`);
-      })
+let pages = [];
+let counter = 0;
+
+function generateFinalGraph() {
+  console.log('--- RESULT ---');
+  pages.forEach(page => {
+    page.links.forEach(link => {
+      console.log(`"${page.pageTitle}" -> "${link}"`);
     })
   })
-*/
-});
+}
+
+function processResult(res) {
+  console.log(res.pageTitle);
+  pages.push(res);
+  res.links.forEach(link => {
+    let page = _.find(pages, {pageTitle: link});
+    if (!page) loadAndParsePage(link, processResult);
+  });
+  counter--;
+  if (counter === 0) {
+    generateFinalGraph();
+  }
+}
+
+loadAndParsePage('JavaScript', processResult);
