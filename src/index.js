@@ -6,6 +6,7 @@ const BASE_URL = 'https://ru.wikipedia.org/wiki/';
 
 function loadAndParsePage(name) {
   console.log(`Fetch ${name}...`);
+  counter++;
   let url = `${BASE_URL}${encodeURIComponent(name)}`;
   let pageTitle;
   let result = [];
@@ -31,6 +32,8 @@ function loadAndParsePage(name) {
 }
 
 let pages = [];
+let counter = 0;
+const MAX_COUNT = 10;
 
 function generateFinalGraph() {
   console.log('--- RESULT ---');
@@ -51,12 +54,13 @@ async function processResult(res) {
     let page = _.find(pages, {pageTitle: link});
     if (page) continue;
     await loadAndParsePage(link).then(processResult);
+    if (counter >= MAX_COUNT) return;
   }
 }
 
 
 async function start() {
-  await loadAndParsePage('JavaScript')
+  await loadAndParsePage('HTML')
     .then(processResult);
 
   generateFinalGraph();
