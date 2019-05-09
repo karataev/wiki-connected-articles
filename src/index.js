@@ -3,13 +3,13 @@ const request = require('request-promise-native');
 const cheerio = require('cheerio');
 const _ = require('lodash');
 
-const BASE_URL = 'https://en.wikipedia.org/wiki/';
+const BASE_URL = 'https://en.wikipedia.org';
 
 function loadAndParsePage(name) {
   console.log(`Fetch ${name}...`);
   allLinks.push(name);
   counter++;
-  let url = `${BASE_URL}${encodeURIComponent(name)}`;
+  let url = `${BASE_URL}${name}`;
   let pageTitle;
   let result = [];
 
@@ -17,13 +17,16 @@ function loadAndParsePage(name) {
     .then((response) => {
       const $ = cheerio.load(response);
       pageTitle = $('h1').text();
+
       $('h2:contains("See also")').nextAll('ul').first().find('li > a').each((index, node) => {
         let title = $(node).text();
-        result.push(title);
+        let href = $(node).attr('href');
+        result.push({title, href});
       });
 
       return {
         pageTitle,
+        href: name,
         links: result,
       };
     })
@@ -36,13 +39,13 @@ function loadAndParsePage(name) {
 let pages = [];
 let counter = 0;
 const MAX_COUNT = 10;
-let allLinks = ['AngularJS'];
+let allLinks = ['/wiki/React_(JavaScript_library)'];
 
 function generateFinalGraph() {
   let result = [];
   pages.forEach(page => {
     page.links.forEach(link => {
-      result.push(`"${page.pageTitle}" -> "${link}"`);
+      result.push(`"${page.pageTitle}" -> "${link.title}"`);
     })
   });
   fs.writeFileSync('output.txt', result.join('\n'));
@@ -57,12 +60,12 @@ async function processResult(res) {
   let promises = res.links
     .filter(link => {
       if (counter >= MAX_COUNT) return false;
-      if (link.indexOf('disambiguation') >= 0) return false;
-      if (allLinks.indexOf(link) >= 0) return false;
+      if (link.title.indexOf('disambiguation') >= 0) return false;
+      if (allLinks.indexOf(link.href) >= 0) return false;
       return link;
     })
     .map(link => {
-      return loadAndParsePage(link);
+      return loadAndParsePage(link.href);
     });
 
   await Promise.all(promises)
