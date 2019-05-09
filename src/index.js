@@ -3,7 +3,7 @@ const request = require('request-promise-native');
 const cheerio = require('cheerio');
 const _ = require('lodash');
 
-const BASE_URL = 'https://ru.wikipedia.org/wiki/';
+const BASE_URL = 'https://en.wikipedia.org/wiki/';
 
 function loadAndParsePage(name) {
   console.log(`Fetch ${name}...`);
@@ -17,7 +17,7 @@ function loadAndParsePage(name) {
     .then((response) => {
       const $ = cheerio.load(response);
       pageTitle = $('h1').text();
-      $('h2:contains("См. также")').nextAll('ul').first().find('li > a').each((index, node) => {
+      $('h2:contains("See also")').nextAll('ul').first().find('li > a').each((index, node) => {
         let title = $(node).text();
         result.push(title);
       });
@@ -35,8 +35,8 @@ function loadAndParsePage(name) {
 
 let pages = [];
 let counter = 0;
-const MAX_COUNT = 20;
-let allLinks = ['JavaScript'];
+const MAX_COUNT = 10;
+let allLinks = ['AngularJS'];
 
 function generateFinalGraph() {
   let result = [];
@@ -57,6 +57,7 @@ async function processResult(res) {
   let promises = res.links
     .filter(link => {
       if (counter >= MAX_COUNT) return false;
+      if (link.indexOf('disambiguation') >= 0) return false;
       if (allLinks.indexOf(link) >= 0) return false;
       return link;
     })
