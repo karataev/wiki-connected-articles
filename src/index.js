@@ -7,6 +7,7 @@ const BASE_URL = 'https://ru.wikipedia.org/wiki/';
 
 function loadAndParsePage(name) {
   console.log(`Fetch ${name}...`);
+  allLinks.push(name);
   counter++;
   let url = `${BASE_URL}${encodeURIComponent(name)}`;
   let pageTitle;
@@ -35,6 +36,7 @@ function loadAndParsePage(name) {
 let pages = [];
 let counter = 0;
 const MAX_COUNT = 20;
+let allLinks = ['JavaScript'];
 
 function generateFinalGraph() {
   let result = [];
@@ -52,18 +54,27 @@ async function processResult(res) {
   pages.push(res);
   console.log(res);
 
-  for (let i = 0; i < res.links.length; i++) {
-    let link = res.links[i];
-    let page = _.find(pages, {pageTitle: link});
-    if (page) continue;
-    await loadAndParsePage(link).then(processResult);
-    if (counter >= MAX_COUNT) return;
-  }
+  let promises = res.links
+    .filter(link => {
+      if (counter >= MAX_COUNT) return false;
+      if (allLinks.indexOf(link) >= 0) return false;
+      return link;
+    })
+    .map(link => {
+      return loadAndParsePage(link);
+    });
+
+  await Promise.all(promises)
+    .then(async results => {
+      for (let i = 0; i < results.length; i++) {
+        await processResult(results[i]);
+      }
+    });
 }
 
 
 async function start() {
-  await loadAndParsePage('Компилятор')
+  await loadAndParsePage(allLinks[0])
     .then(processResult);
 
   generateFinalGraph();
