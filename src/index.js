@@ -5,17 +5,16 @@ const _ = require('lodash');
 const exporter = require('./exporter');
 
 const BASE_URL = 'https://en.wikipedia.org';
-const MAX_COUNT = 5;
+const MAX_NODES_COUNT = 5;
 
-let startUrl = '/wiki/React_(JavaScript_library)';
-let counter = 0;
+let startUrl = '/wiki/Python_(programming_language)';
+let nodesCounter = 0;
 let parsedPages = [];
 let visitedLinks = [];
 
 function loadAndParsePage(url) {
   console.log(`Fetch ${url}...`);
   visitedLinks.push(url);
-  counter++;
 
   return request(`${BASE_URL}${url}`)
     .then((response) => {
@@ -27,6 +26,7 @@ function loadAndParsePage(url) {
       $seeAlsoLinks.each((index, node) => {
         let title = $(node).text();
         let url = $(node).attr('href');
+        if (!title || !url) return;
         result.push({title, url});
       });
 
@@ -49,9 +49,10 @@ async function processResult(res) {
 
   let promises = res.links
     .filter(link => {
-      if (counter >= MAX_COUNT) return false;
+      if (nodesCounter >= MAX_NODES_COUNT) return false;
       if (link.title.indexOf('disambiguation') >= 0) return false;
       if (visitedLinks.indexOf(link.url) >= 0) return false;
+      nodesCounter++;
       return link;
     })
     .map(link => {
@@ -68,6 +69,7 @@ async function processResult(res) {
 
 
 async function start() {
+  nodesCounter = 1;
   await loadAndParsePage(startUrl)
     .then(processResult);
 
