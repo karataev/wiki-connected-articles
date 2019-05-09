@@ -1,32 +1,36 @@
-const request = require('request');
+const request = require('request-promise-native');
 const cheerio = require('cheerio');
 const _ = require('lodash');
 
 const BASE_URL = 'https://ru.wikipedia.org/wiki/';
 
-function loadAndParsePage(name, cb) {
-  counter++;
+function loadAndParsePage(name) {
+  console.log(`Fetch ${name}...`);
   let url = `${BASE_URL}${encodeURIComponent(name)}`;
   let pageTitle;
   let result = [];
 
-  request(url, function (error, response, body) {
-    const $ = cheerio.load(body);
-    pageTitle = $('h1').text();
-    $('h2:contains("См. также")').nextAll('ul').first().find('li > a').each((index, node) => {
-      let title = $(node).text();
-      result.push(title);
-    });
+  return request(url)
+    .then((response) => {
+      const $ = cheerio.load(response);
+      pageTitle = $('h1').text();
+      $('h2:contains("См. также")').nextAll('ul').first().find('li > a').each((index, node) => {
+        let title = $(node).text();
+        result.push(title);
+      });
 
-    cb({
-      pageTitle,
-      links: result,
-    });
-  })
+      return {
+        pageTitle,
+        links: result,
+      };
+    })
+    .catch(err => {
+      // console.log('ERROR', err);
+      return null;
+    })
 }
 
 let pages = [];
-let counter = 0;
 
 function generateFinalGraph() {
   console.log('--- RESULT ---');
@@ -37,17 +41,25 @@ function generateFinalGraph() {
   })
 }
 
-function processResult(res) {
-  console.log(res.pageTitle);
+async function processResult(res) {
+  if (!res) return;
   pages.push(res);
-  res.links.forEach(link => {
+  console.log(res);
+
+  for (let i = 0; i < res.links.length; i++) {
+    let link = res.links[i];
     let page = _.find(pages, {pageTitle: link});
-    if (!page) loadAndParsePage(link, processResult);
-  });
-  counter--;
-  if (counter === 0) {
-    generateFinalGraph();
+    if (page) continue;
+    await loadAndParsePage(link).then(processResult);
   }
 }
 
-loadAndParsePage('JavaScript', processResult);
+
+async function start() {
+  await loadAndParsePage('JavaScript')
+    .then(processResult);
+
+  generateFinalGraph();
+}
+
+start();
