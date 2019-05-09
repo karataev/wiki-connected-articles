@@ -1,32 +1,38 @@
-const fs = require('fs');
 const request = require('request-promise-native');
 const cheerio = require('cheerio');
 const _ = require('lodash');
 
+const exporter = require('./exporter');
+
 const BASE_URL = 'https://en.wikipedia.org';
+const MAX_COUNT = 5;
 
-function loadAndParsePage(name) {
-  console.log(`Fetch ${name}...`);
-  allLinks.push(name);
+let startUrl = '/wiki/React_(JavaScript_library)';
+let counter = 0;
+let parsedPages = [];
+let visitedLinks = [];
+
+function loadAndParsePage(url) {
+  console.log(`Fetch ${url}...`);
+  visitedLinks.push(url);
   counter++;
-  let url = `${BASE_URL}${name}`;
-  let pageTitle;
-  let result = [];
 
-  return request(url)
+  return request(`${BASE_URL}${url}`)
     .then((response) => {
       const $ = cheerio.load(response);
-      pageTitle = $('h1').text();
+      let title = $('h1').text();
+      let result = [];
 
-      $('h2:contains("See also")').nextAll('ul').first().find('li > a').each((index, node) => {
+      let $seeAlsoLinks = $('h2:contains("See also")').nextAll('ul').first().find('li > a');
+      $seeAlsoLinks.each((index, node) => {
         let title = $(node).text();
-        let href = $(node).attr('href');
-        result.push({title, href});
+        let url = $(node).attr('href');
+        result.push({title, url});
       });
 
       return {
-        pageTitle,
-        href: name,
+        title,
+        href: url,
         links: result,
       };
     })
@@ -36,36 +42,20 @@ function loadAndParsePage(name) {
     })
 }
 
-let pages = [];
-let counter = 0;
-const MAX_COUNT = 10;
-let allLinks = ['/wiki/React_(JavaScript_library)'];
-
-function generateFinalGraph() {
-  let result = [];
-  pages.forEach(page => {
-    page.links.forEach(link => {
-      result.push(`"${page.pageTitle}" -> "${link.title}"`);
-    })
-  });
-  fs.writeFileSync('output.txt', result.join('\n'));
-  console.log('--- DONE ---');
-}
-
 async function processResult(res) {
   if (!res) return;
-  pages.push(res);
+  parsedPages.push(res);
   console.log(res);
 
   let promises = res.links
     .filter(link => {
       if (counter >= MAX_COUNT) return false;
       if (link.title.indexOf('disambiguation') >= 0) return false;
-      if (allLinks.indexOf(link.href) >= 0) return false;
+      if (visitedLinks.indexOf(link.url) >= 0) return false;
       return link;
     })
     .map(link => {
-      return loadAndParsePage(link.href);
+      return loadAndParsePage(link.url);
     });
 
   await Promise.all(promises)
@@ -78,10 +68,10 @@ async function processResult(res) {
 
 
 async function start() {
-  await loadAndParsePage(allLinks[0])
+  await loadAndParsePage(startUrl)
     .then(processResult);
 
-  generateFinalGraph();
+  exporter.toFile('output.txt', parsedPages);
 }
 
 start();
