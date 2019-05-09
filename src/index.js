@@ -1,3 +1,4 @@
+const fs = require('fs');
 const request = require('request-promise-native');
 const cheerio = require('cheerio');
 const _ = require('lodash');
@@ -33,15 +34,17 @@ function loadAndParsePage(name) {
 
 let pages = [];
 let counter = 0;
-const MAX_COUNT = 10;
+const MAX_COUNT = 20;
 
 function generateFinalGraph() {
-  console.log('--- RESULT ---');
+  let result = [];
   pages.forEach(page => {
     page.links.forEach(link => {
-      console.log(`"${page.pageTitle}" -> "${link}"`);
+      result.push(`"${page.pageTitle}" -> "${link}"`);
     })
-  })
+  });
+  fs.writeFileSync('output.txt', result.join('\n'));
+  console.log('--- DONE ---');
 }
 
 async function processResult(res) {
@@ -60,7 +63,7 @@ async function processResult(res) {
 
 
 async function start() {
-  await loadAndParsePage('HTML')
+  await loadAndParsePage('Компилятор')
     .then(processResult);
 
   generateFinalGraph();
