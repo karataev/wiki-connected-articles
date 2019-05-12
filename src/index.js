@@ -5,7 +5,7 @@ const _ = require('lodash');
 const exporter = require('./exporter');
 
 const BASE_URL = 'https://en.wikipedia.org';
-const MAX_NODES_COUNT = 5;
+const MAX_NODES_COUNT = 100;
 
 let startUrl = '/wiki/Python_(programming_language)';
 let nodesCounter = 0;
